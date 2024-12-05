@@ -299,6 +299,12 @@ func printTable() {
 }
 
 func changeFanSpeed(speed int) {
+	// First, enable manual control
+	enableCmd := exec.Command("sudo", "sh", "-c", "echo 1 > /sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/hwmon/hwmon1/pwm1_enable")
+	err := enableCmd.Run()
+	if err != nil {
+		log.Fatalf("Error enabling manual fan control: %v", err)
+	}
 	// Path to the pwm1 file for manual control
 	pwm1Path := "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/hwmon/hwmon1/pwm1"
 
@@ -306,7 +312,7 @@ func changeFanSpeed(speed int) {
 	speedStr := strconv.Itoa(speed)
 
 	// Write the new fan speed to the pwm1 file
-	err := ioutil.WriteFile(pwm1Path, []byte(speedStr), 0644)
+	err = ioutil.WriteFile(pwm1Path, []byte(speedStr), 0644)
 	if err != nil {
 		log.Fatalf("Error setting fan speed: %v", err)
 	}
@@ -321,15 +327,34 @@ func setAutoMode() {
 	// Set the pwm1_enable value to AUTO (2)
 	err := ioutil.WriteFile(pwm1EnablePath, []byte("2"), 0644)
 	if err != nil {
-		log.Fatalf("Error setting fan control to AUTO: %v", err)
+		log.Fatalf("Error setting fan control to AUTO, Retry as sudo again. %v", err, "")
 	}
 	fmt.Println("Fan control set to AUTO")
 }
 
 func main() {
-	// Define the fan speed flag
-	speedFlag := flag.Int("f", 0, "Set the fan speed (0 to 100)")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Options:\n")
+		flag.VisitAll(func(f *flag.Flag) {
+			name := f.Name
+			if len(name) > 1 {
+				name = "--" + name // Make sure to print long flags with --
+			} else {
+				name = "-" + name // For short flags, leave them as-is
+			}
+			fmt.Fprintf(os.Stderr, "  %-10s %s\n", name, f.Usage)
+		})
+	}	
+	// Define the fan speed flag (long version)
+	speedFlag := flag.Int("fan", 0, "Set the fan speed (40 to 80)")
 	autoFlag := flag.Bool("auto", false, "Set fan control to AUTO mode")
+
+	// Manually add short flags
+	flag.IntVar(speedFlag, "f", *speedFlag, "Set the fan speed (40 to 80)")    // -f short version
+	flag.BoolVar(autoFlag, "a", *autoFlag, "Set fan control to AUTO mode")      // -a short version
+
+	// Parse the flags
 	flag.Parse()
 
 	// If the user provided a fan speed, change it
