@@ -125,13 +125,13 @@ func printDate() string {
 	return time.Now().Format("Mon Jan 2 15:04:05 2006")
 }
 
-func printTable() {
+func getTemp() string {
 	// Run the sensors command and capture the output
 	cmd := exec.Command("sensors")
 	output, err := cmd.Output()
 	if err != nil {
 		fmt.Println("Error running sensors:", err)
-		return
+		return ""
 	}	
 
 	// Convert the output to a string
@@ -150,26 +150,28 @@ func printTable() {
 
 	if len(match) < 2 {
 		fmt.Println("GPU temperature not found")
-		return
+		return ""
 	}
 
 	// Assign value directly to gpuTemp
-	gpuTemp := match[1] + "°C"
+	return match[1] + "°C"
+}
 
-	cmd = exec.Command("glxinfo")
+func getCodename() string {
+	cmd := exec.Command("glxinfo")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		fmt.Println("Error:", err)
-		return
+		return ""
 	}
 	if err := cmd.Start(); err != nil {
 		fmt.Println("Error starting the command:", err)
-		return
+		return ""
 	}
 	defer stdout.Close()
 
 	scanner := bufio.NewScanner(stdout)
-	var codename, dedicatedMemory, availableMemory string
+	var codename string
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -177,9 +179,37 @@ func printTable() {
 		// Extract the codename
 		if strings.Contains(line, "OpenGL renderer string:") {
 			codename = strings.TrimSpace(strings.Split(line, ":")[1])
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Error reading output:", err)
+	}
+
+	return codename
+}
+
+func getDram() string {
+	cmd := exec.Command("glxinfo")
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return ""
+	}
+	if err := cmd.Start(); err != nil {
+		fmt.Println("Error starting the command:", err)
+		return ""
+	}
+	defer stdout.Close()
+
+	scanner := bufio.NewScanner(stdout)
+	var dedicatedMemory, availableMemory string
+
+	for scanner.Scan() {
+		line := scanner.Text()
 
 		// Extract memory details
-		} else if strings.Contains(line, "Dedicated video memory:") {
+		if strings.Contains(line, "Dedicated video memory:") {
 			dedicatedMemory = strings.TrimSpace(strings.Split(line, ":")[1])
 		} else if strings.Contains(line, "Currently available dedicated video memory:") {
 			availableMemory = strings.TrimSpace(strings.Split(line, ":")[1])
@@ -205,39 +235,72 @@ func printTable() {
 
 	// Combine used and dedicated memory into a single string (dram)
 	dram := fmt.Sprintf("%.0fMiB / %.0fMiB", usedMemoryMiB, dedicatedMemoryMiB)
-	
-	// Get family name using codename from the nvidiaFamilies map
-	familyName, found := nvidiaFamilies[codename]
-	if !found {
-		familyName = "Unknown Family"
-	}
+	return dram
+}
 
-	// Run the lspci command with the specified filter
-	cmd = exec.Command("lspci", "-k", "-d", "::03xx")
+func getChipset() string {
+	cmd := exec.Command("lspci", "-k", "-d", "::03xx")
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		fmt.Println("Error executing lspci:", err)
-		return
+		return ""
 	}
 
 	// Convert output to string
 	outputStr := out.String()
 
-	// Define regex pattern to extract NVIDIA chipset model and GPU name
+	// Define regex pattern to extract NVIDIA chipset model
 	re2 := regexp.MustCompile(`(?m)NVIDIA\s+Corporation\s+([A-Za-z0-9]+)\s+\[(.*?)\]`)
 	matches := re2.FindAllStringSubmatch(outputStr, -1)
 
 	if len(matches) == 0 {
 		fmt.Println("No NVIDIA GPU found.")
-		return
+		return ""
 	}
 
-	// Extract chipsetModel and gpuName
+	// Extract chipsetModel
 	chipsetModel := matches[0][1] // The first capture group contains the chipset model
-	gpuName := matches[0][2]      // The second capture group contains the GPU name
+	return chipsetModel
+}
 
+func getGpuName() string {
+	cmd := exec.Command("lspci", "-k", "-d", "::03xx")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		fmt.Println("Error executing lspci:", err)
+		return ""
+	}
+
+	// Convert output to string
+	outputStr := out.String()
+
+	// Define regex pattern to extract NVIDIA GPU name
+	re2 := regexp.MustCompile(`(?m)NVIDIA\s+Corporation\s+([A-Za-z0-9]+)\s+\[(.*?)\]`)
+	matches := re2.FindAllStringSubmatch(outputStr, -1)
+
+	if len(matches) == 0 {
+		fmt.Println("No NVIDIA GPU found.")
+		return ""
+	}
+
+	// Extract gpuName
+	gpuName := matches[0][2] // The second capture group contains the GPU name
+	return gpuName
+}
+
+func getFamilyName(codename string) string {
+	familyName, found := nvidiaFamilies[codename]
+	if !found {
+		familyName = "Unknown Family"
+	}
+	return familyName
+}
+
+func getFanspeed() (string, string) {
 	// Path to the pwm1_enable file
 	filePath := "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/hwmon/hwmon1/pwm1_enable"
 
@@ -275,6 +338,10 @@ func printTable() {
 	// Remove any extra spaces or newline characters
 	speed := strings.TrimSpace(string(data))
 
+	return fanMode, speed
+}
+
+func printTable(gpuTemp string, codename string, dram string, chipsetModel string, gpuName string, familyName string, fanMode string, speed string) {
 	// First table
 	table1 := tablewriter.NewWriter(os.Stdout)
 	table1.SetHeader([]string{"GPU NAME       ", "FAMILY CODE NAME", "CODE NAME", "GPU CHIPSET"})
@@ -364,5 +431,12 @@ func main() {
 		changeFanSpeed(*speedFlag)
 	}
 	fmt.Println(printDate())
-	printTable()
+	gpuTemp := getTemp()
+	dram := getDram()
+	codename := getCodename()
+	gpuName := getGpuName()
+	chipsetModel := getChipset()
+	familyName := getFamilyName(codename)
+	fanMode, speed := getFanspeed()
+	printTable(gpuTemp, codename, dram, chipsetModel, gpuName, familyName, fanMode, speed)
 }
