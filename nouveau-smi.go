@@ -157,6 +157,20 @@ func getTemp() string {
 	return match[1] + "°C"
 }
 
+func checkGlxinfo() {
+	cmd := exec.Command("glxinfo")
+	err := cmd.Run()
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok && exitError.ExitCode() == 127 {
+			fmt.Println("Error: glxinfo command not found.")
+			fmt.Println("Please install glxinfo using the command: sudo pacman -S mesa-utils")
+		} else {
+			fmt.Println("Error running glxinfo:", err)
+		}
+		return
+	}
+}
+
 func getCodename() string {
 	cmd := exec.Command("glxinfo")
 	stdout, err := cmd.StdoutPipe()
