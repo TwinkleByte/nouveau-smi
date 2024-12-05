@@ -4,8 +4,8 @@
 ## Installation Guide
 
 ### Prerequisites
-- Go: Version 1.23.4 or later.
 - Git: To clone the repo
+- Go: Version 1.23.4 or later.
 - **Nouveau Driver**: The tool requires the Nouveau driver for NVIDIA GPUs. Make sure it is installed and active on your system.
 
 ### Clone the Repository and Build the tool
