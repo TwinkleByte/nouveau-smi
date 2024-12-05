@@ -16,7 +16,8 @@
 git clone https://github.com/TwinkleByte/nouveau-smi.git
 cd nouveau-smi
 go build -o nouveau-smi nouveau-smi.go
-./nouveau-smi
+sudo mv nouveau-smi /usr/local/bin/
+nouveau-smi
 ```
 ### Usage
 ```
