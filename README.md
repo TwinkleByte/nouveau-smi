@@ -15,9 +15,13 @@
 git clone https://github.com/TwinkleByte/nouveau-smi.git
 cd nouveau-smi
 go build -o nouveau-smi nouveau-smi.go
-sudo mv nouveau-smi /usr/local/bin/
+sudo install -m 755 nouveau-smi /usr/local/bin/
 nouveau-smi
 ```
+### Uninstall
+sudo rm /usr/local/bin/nouveau-smi
+### Monitor Nouveau GPU status every second
+`watch -n1 --no-title nouveau-smi`
 ### Usage
 ```
 Usage of nouveau-smi:
