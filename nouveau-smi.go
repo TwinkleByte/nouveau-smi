@@ -1,14 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"bufio"
 	"bytes"
 	"strconv"
 	"fmt"
 	"os"
-	"io"
 	"os/exec"
 	"regexp"
 	"time"
@@ -18,12 +16,117 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
+// Map of NVIDIA families with code names as keys and family names as values
+var nvidiaFamilies = map[string]string{
+	"NV04": "NV04 family (Fahrenheit)",
+	"NV05": "NV04 family (Fahrenheit)",
+	"NV0A": "NV04 family (Fahrenheit)",
+	"NV10": "NV10 family (Celsius)",
+	"NV11": "NV10 family (Celsius)",
+	"NV15": "NV10 family (Celsius)",
+	"NV17": "NV10 family (Celsius)",
+	"NV18": "NV10 family (Celsius)",
+	"NV1A": "NV10 family (Celsius)",
+	"NV1F": "NV10 family (Celsius)",
+	"NV19": "NV10 family (Celsius)",
+	"NV20": "NV20 family (Kelvin)",
+	"NV25": "NV20 family (Kelvin)",
+	"NV28": "NV20 family (Kelvin)",
+	"NV2A": "NV20 family (Kelvin)",
+	"NV30": "NV30 family (Rankine)",
+	"NV31": "NV30 family (Rankine)",
+	"NV34": "NV30 family (Rankine)",
+	"NV35": "NV30 family (Rankine)",
+	"NV36": "NV30 family (Rankine)",
+	"NV37": "NV30 family (Rankine)",
+	"NV39": "NV30 family (Rankine)",
+	"NV38": "NV30 family (Rankine)",
+	"NV40": "NV40 family (Curie)",
+	"NV41": "NV40 family (Curie)",
+	"NV42": "NV40 family (Curie)",
+	"NV43": "NV40 family (Curie)",
+	"NV44": "NV40 family (Curie)",
+	"NV46": "NV40 family (Curie)",
+	"NV47": "NV40 family (Curie)",
+	"NV49": "NV40 family (Curie)",
+	"NV4A": "NV40 family (Curie)",
+	"NV4B": "NV40 family (Curie)",
+	"NV4C": "NV40 family (Curie)",
+	"NV4E": "NV40 family (Curie)",
+	"NV63": "NV40 family (Curie)",
+	"NV67": "NV40 family (Curie)",
+	"NV68": "NV40 family (Curie)",
+	"NV50": "NV50 family (Tesla)",
+	"NV84": "NV50 family (Tesla)",
+	"NV86": "NV50 family (Tesla)",
+	"NV92": "NV50 family (Tesla)",
+	"NV94": "NV50 family (Tesla)",
+	"NV96": "NV50 family (Tesla)",
+	"NV98": "NV50 family (Tesla)",
+	"NVA0": "NV50 family (Tesla)",
+	"NVA3": "NV50 family (Tesla)",
+	"NVA5": "NV50 family (Tesla)",
+	"NVA8": "NV50 family (Tesla)",
+	"NVAA": "NV50 family (Tesla)",
+	"NVAC": "NV50 family (Tesla)",
+	"NVAF": "NV50 family (Tesla)",
+	"NVC0": "NVC0 family (Fermi)",
+	"NVC1": "NVC0 family (Fermi)",
+	"NVC3": "NVC0 family (Fermi)",
+	"NVC4": "NVC0 family (Fermi)",
+	"NVC8": "NVC0 family (Fermi)",
+	"NVCE": "NVC0 family (Fermi)",
+	"NVCF": "NVC0 family (Fermi)",
+	"NVD7": "NVC0 family (Fermi)",
+	"NVD9": "NVC0 family (Fermi)",
+	"NVE0": "NVE0 family (familyName)",
+	"NVE4": "NVE0 family (Kepler)",
+	"NVE7": "NVE0 family (Kepler)",
+	"NVE6": "NVE0 family (Kepler)",
+	"NVF0": "NVE0 family (Kepler)",
+	"NVF1": "NVE0 family (Kepler)",
+	"NV106": "NVE0 family (Kepler)",
+	"NV108": "NVE0 family (Kepler)",
+	"NVEA": "NVE0 family (Kepler)",
+	"NV110": "NV110 family (Maxwell)",
+	"NV117": "NV110 family (Maxwell)",
+	"NV118": "NV110 family (Maxwell)",
+	"NV120": "NV110 family (Maxwell)",
+	"NV124": "NV110 family (Maxwell)",
+	"NV126": "NV110 family (Maxwell)",
+	"NV12B": "NV110 family (Maxwell)",
+	"NV130": "NV130 family (Pascal)",
+	"NV132": "NV130 family (Pascal)",
+	"NV134": "NV130 family (Pascal)",
+	"NV136": "NV130 family (Pascal)",
+	"NV137": "NV130 family (Pascal)",
+	"NV138": "NV130 family (Pascal)",
+	"NV140": "NV140 family (Volta)",
+	"NV160": "NV160 family (Turing)",
+	"NV162": "NV160 family (Turing)",
+	"NV164": "NV160 family (Turing)",
+	"NV166": "NV160 family (Turing)",
+	"NV168": "NV160 family (Turing)",
+	"NV167": "NV160 family (Turing)",
+	"NV170": "NV170 family (Ampere)",
+	"NV172": "NV170 family (Ampere)",
+	"NV174": "NV170 family (Ampere)",
+	"NV176": "NV170 family (Ampere)",
+	"NV177": "NV170 family (Ampere)",
+	"NV190": "NV190 family (Ada Lovelace)",
+	"NV192": "NV190 family (Ada Lovelace)",
+	"NV193": "NV190 family (Ada Lovelace)",
+	"NV194": "NV190 family (Ada Lovelace)",
+	"NV196": "NV190 family (Ada Lovelace)",
+	"NV197": "NV190 family (Ada Lovelace)",
+}
+
 func printDate() string {
 	return time.Now().Format("Mon Jan 2 15:04:05 2006")
 }
 
 func getCodename() string {
-	cmd := exec.Command("glxinfo")
+	cmd := exec.Command("grep", "-i", "chipset", "/var/log/Xorg.0.log")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -41,14 +144,24 @@ func getCodename() string {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// Extract the codename
-		if strings.Contains(line, "OpenGL renderer string:") {
-			codename = strings.TrimSpace(strings.Split(line, ":")[1])
+		// Search for the "Chipset" line and extract the chipset model
+		if strings.Contains(line, "Chipset:") {
+			// Extract the part after "Chipset: "
+			chipset := strings.TrimSpace(strings.Split(line, "Chipset:")[1])
+			// Remove "NVIDIA " if it exists and also remove surrounding quotes
+			codename = strings.Replace(chipset, "NVIDIA ", "", 1)
+			codename = strings.Replace(codename, "\"", "", -1)
+			break
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
 		fmt.Println("Error reading output:", err)
+	}
+
+	if codename == "" {
+		fmt.Println("Error: Chipset information not found.")
+		return ""
 	}
 
 	return codename
@@ -73,7 +186,7 @@ func getDram() string {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// Extract memory details
+		// Extract memory details if available
 		if strings.Contains(line, "Dedicated video memory:") {
 			dedicatedMemory = strings.TrimSpace(strings.Split(line, ":")[1])
 		} else if strings.Contains(line, "Currently available dedicated video memory:") {
@@ -83,6 +196,12 @@ func getDram() string {
 
 	if err := scanner.Err(); err != nil {
 		fmt.Println("Error reading output:", err)
+	}
+
+	// If either memory value is empty, print a warning
+	if dedicatedMemory == "" || availableMemory == "" {
+		fmt.Println("Warning: Missing memory information.")
+		return "Unknown memory"
 	}
 
 	// Function to convert MB to MiB
@@ -106,88 +225,57 @@ func getDram() string {
 	return dram
 }
 
-func getChipset() string {
+func parseLspciOutput() (string, string, error) {
 	cmd := exec.Command("lspci", "-k", "-d", "::03xx")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
-		fmt.Println("Error executing lspci:", err)
-		return ""
+		return "", "", fmt.Errorf("Error executing lspci: %v", err)
 	}
 
 	// Convert output to string
 	outputStr := out.String()
 
-	// Define regex pattern to extract NVIDIA chipset model
+	// Define regex pattern to extract NVIDIA chipset model and GPU name
 	re2 := regexp.MustCompile(`(?m)NVIDIA\s+Corporation\s+([A-Za-z0-9]+)\s+\[(.*?)\]`)
 	matches := re2.FindAllStringSubmatch(outputStr, -1)
 
 	if len(matches) == 0 {
-		fmt.Println("No NVIDIA GPU found.")
-		return ""
+		return "", "", fmt.Errorf("No NVIDIA GPU found")
 	}
 
-	// Extract chipsetModel
+	// Extract chipsetModel and gpuName
 	chipsetModel := matches[0][1] // The first capture group contains the chipset model
+	gpuName := matches[0][2]     // The second capture group contains the GPU name
+
+	return chipsetModel, gpuName, nil
+}
+
+func getChipset() string {
+	chipsetModel, _, err := parseLspciOutput()
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
 	return chipsetModel
 }
 
 func getGpuName() string {
-	cmd := exec.Command("lspci", "-k", "-d", "::03xx")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
+	_, gpuName, err := parseLspciOutput()
 	if err != nil {
-		fmt.Println("Error executing lspci:", err)
+		fmt.Println(err)
 		return ""
 	}
-
-	// Convert output to string
-	outputStr := out.String()
-
-	// Define regex pattern to extract NVIDIA GPU name
-	re2 := regexp.MustCompile(`(?m)NVIDIA\s+Corporation\s+([A-Za-z0-9]+)\s+\[(.*?)\]`)
-	matches := re2.FindAllStringSubmatch(outputStr, -1)
-
-	if len(matches) == 0 {
-		fmt.Println("No NVIDIA GPU found.")
-		return ""
-	}
-
-	// Extract gpuName
-	gpuName := matches[0][2] // The second capture group contains the GPU name
 	return gpuName
 }
 
-func loadNvidiaFamilies(filename string) (map[string]string, error) {
-    file, err := os.Open(filename)
-    if err != nil {
-        return nil, err
-    }
-    defer file.Close()
-
-    // Read the JSON file
-    fileData, err := io.ReadAll(file)
-    if err != nil {
-        return nil, err
-    }
-
-    var nvidiaFamilies map[string]string
-    err = json.Unmarshal(fileData, &nvidiaFamilies)
-    if err != nil {
-        return nil, err
-    }
-
-    return nvidiaFamilies, nil
-}
-
-func getFamilyName(codename string, nvidiaFamilies map[string]string) string {
-    familyName, found := nvidiaFamilies[codename]
-    if !found {
-        familyName = "Unknown Family"
-    }
-    return familyName
+func getFamilyName(codename string) string {
+	familyName, found := nvidiaFamilies[codename]
+	if !found {
+		familyName = "Unknown Family"
+	}
+	return familyName
 }
 
 func findHwmonPath(driverName string) (string, error) {
@@ -309,37 +397,26 @@ func setAutoMode() {
 	fmt.Println("Fan control set to AUTO")
 }
 
-func printTable(gpuTemp string, codename string, dram string, chipsetModel string, gpuName string, familyName string, fanMode string, speed string) {
-	// First table
-	table1 := tablewriter.NewWriter(os.Stdout)
-	table1.SetHeader([]string{"GPU NAME", "FAMILY CODE NAME", "CODE NAME", "GPU CHIPSET"})
-	table1.SetBorder(true)   // Add borders around the table
-	table1.SetColumnAlignment([]int{tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER})
-	table1.SetRowLine(true)
-	table1.Append([]string{gpuName, familyName, codename, chipsetModel})
-	table1.Render()
+func renderTable(headers []string, rows [][]string) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(headers)
+	table.SetBorder(true)
+	table.SetRowLine(true)
 
-	// Second table
-	table2 := tablewriter.NewWriter(os.Stdout)
-	table2.SetHeader([]string{"TEMPERATURE", "DRAM", "FAN STATUS", "FAN SPEED"})
-	table2.SetBorder(true) // Add borders around the table
-	table2.SetColumnAlignment([]int{tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER})
-	table2.SetRowLine(true)
+	// Set column alignment to center for all columns
+	alignments := make([]int, len(headers))
+	for i := range headers {
+		alignments[i] = tablewriter.ALIGN_CENTER
+	}
+	table.SetColumnAlignment(alignments)
 
-	// Add rows of data to the second table
-	table2.Append([]string{gpuTemp, dram, fanMode, speed})
-
-	// Print the second table
-	table2.Render()
+	for _, row := range rows {
+		table.Append(row)
+	}
+	table.Render()
 }
 
 func main() {
-	// Load the nvidiaFamilies from the JSON file
-	nvidiaFamilies, err := loadNvidiaFamilies("nvidia_families.json")
-	if err != nil {
-		log.Fatalf("Error loading NVIDIA families: %v", err)
-	}
-
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Options:\n")
@@ -376,7 +453,14 @@ func main() {
 	codename := getCodename()
 	gpuName := getGpuName()
 	chipsetModel := getChipset()
-	familyName := getFamilyName(codename, nvidiaFamilies)
+	familyName := getFamilyName(codename)
 	fanMode, speed := getFanspeed()
-	printTable(gpuTemp, codename, dram, chipsetModel, gpuName, familyName, fanMode, speed)
+	renderTable(
+		[]string{"GPU NAME", "FAMILY CODE NAME", "CODE NAME", "GPU CHIPSET"},
+		[][]string{{gpuName, familyName, codename, chipsetModel}},
+	)
+	renderTable(
+		[]string{"TEMPERATURE", "DRAM", "FAN STATUS", "FAN SPEED"},
+		[][]string{{gpuTemp, dram, fanMode, speed}},
+	)
 }
