@@ -1,181 +1,25 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"bufio"
 	"bytes"
 	"strconv"
 	"fmt"
 	"os"
+	"io"
 	"os/exec"
 	"regexp"
 	"time"
 	"strings"
-	"io/ioutil"
 	"log"
 	"path/filepath"
 	"github.com/olekukonko/tablewriter"
 )
 
-// Map of NVIDIA families with code names as keys and family names as values
-var nvidiaFamilies = map[string]string{
-	"NV04": "NV04 family (Fahrenheit)",
-	"NV05": "NV04 family (Fahrenheit)",
-	"NV0A": "NV04 family (Fahrenheit)",
-	"NV10": "NV10 family (Celsius)",
-	"NV11": "NV10 family (Celsius)",
-	"NV15": "NV10 family (Celsius)",
-	"NV17": "NV10 family (Celsius)",
-	"NV18": "NV10 family (Celsius)",
-	"NV1A": "NV10 family (Celsius)",
-	"NV1F": "NV10 family (Celsius)",
-	"NV19": "NV10 family (Celsius)",
-	"NV20": "NV20 family (Kelvin)",
-	"NV25": "NV20 family (Kelvin)",
-	"NV28": "NV20 family (Kelvin)",
-	"NV2A": "NV20 family (Kelvin)",
-	"NV30": "NV30 family (Rankine)",
-	"NV31": "NV30 family (Rankine)",
-	"NV34": "NV30 family (Rankine)",
-	"NV35": "NV30 family (Rankine)",
-	"NV36": "NV30 family (Rankine)",
-	"NV37": "NV30 family (Rankine)",
-	"NV39": "NV30 family (Rankine)",
-	"NV38": "NV30 family (Rankine)",
-	"NV40": "NV40 family (Curie)",
-	"NV41": "NV40 family (Curie)",
-	"NV42": "NV40 family (Curie)",
-	"NV43": "NV40 family (Curie)",
-	"NV44": "NV40 family (Curie)",
-	"NV46": "NV40 family (Curie)",
-	"NV47": "NV40 family (Curie)",
-	"NV49": "NV40 family (Curie)",
-	"NV4A": "NV40 family (Curie)",
-	"NV4B": "NV40 family (Curie)",
-	"NV4C": "NV40 family (Curie)",
-	"NV4E": "NV40 family (Curie)",
-	"NV63": "NV40 family (Curie)",
-	"NV67": "NV40 family (Curie)",
-	"NV68": "NV40 family (Curie)",
-	"NV50": "NV50 family (Tesla)",
-	"NV84": "NV50 family (Tesla)",
-	"NV86": "NV50 family (Tesla)",
-	"NV92": "NV50 family (Tesla)",
-	"NV94": "NV50 family (Tesla)",
-	"NV96": "NV50 family (Tesla)",
-	"NV98": "NV50 family (Tesla)",
-	"NVA0": "NV50 family (Tesla)",
-	"NVA3": "NV50 family (Tesla)",
-	"NVA5": "NV50 family (Tesla)",
-	"NVA8": "NV50 family (Tesla)",
-	"NVAA": "NV50 family (Tesla)",
-	"NVAC": "NV50 family (Tesla)",
-	"NVAF": "NV50 family (Tesla)",
-	"NVC0": "NVC0 family (Fermi)",
-	"NVC1": "NVC0 family (Fermi)",
-	"NVC3": "NVC0 family (Fermi)",
-	"NVC4": "NVC0 family (Fermi)",
-	"NVC8": "NVC0 family (Fermi)",
-	"NVCE": "NVC0 family (Fermi)",
-	"NVCF": "NVC0 family (Fermi)",
-	"NVD7": "NVC0 family (Fermi)",
-	"NVD9": "NVC0 family (Fermi)",
-	"NVE0": "NVE0 family (familyName)",
-	"NVE4": "NVE0 family (Kepler)",
-	"NVE7": "NVE0 family (Kepler)",
-	"NVE6": "NVE0 family (Kepler)",
-	"NVF0": "NVE0 family (Kepler)",
-	"NVF1": "NVE0 family (Kepler)",
-	"NV106": "NVE0 family (Kepler)",
-	"NV108": "NVE0 family (Kepler)",
-	"NVEA": "NVE0 family (Kepler)",
-	"NV110": "NV110 family (Maxwell)",
-	"NV117": "NV110 family (Maxwell)",
-	"NV118": "NV110 family (Maxwell)",
-	"NV120": "NV110 family (Maxwell)",
-	"NV124": "NV110 family (Maxwell)",
-	"NV126": "NV110 family (Maxwell)",
-	"NV12B": "NV110 family (Maxwell)",
-	"NV130": "NV130 family (Pascal)",
-	"NV132": "NV130 family (Pascal)",
-	"NV134": "NV130 family (Pascal)",
-	"NV136": "NV130 family (Pascal)",
-	"NV137": "NV130 family (Pascal)",
-	"NV138": "NV130 family (Pascal)",
-	"NV140": "NV140 family (Volta)",
-	"NV160": "NV160 family (Turing)",
-	"NV162": "NV160 family (Turing)",
-	"NV164": "NV160 family (Turing)",
-	"NV166": "NV160 family (Turing)",
-	"NV168": "NV160 family (Turing)",
-	"NV167": "NV160 family (Turing)",
-	"NV170": "NV170 family (Ampere)",
-	"NV172": "NV170 family (Ampere)",
-	"NV174": "NV170 family (Ampere)",
-	"NV176": "NV170 family (Ampere)",
-	"NV177": "NV170 family (Ampere)",
-	"NV190": "NV190 family (Ada Lovelace)",
-	"NV192": "NV190 family (Ada Lovelace)",
-	"NV193": "NV190 family (Ada Lovelace)",
-	"NV194": "NV190 family (Ada Lovelace)",
-	"NV196": "NV190 family (Ada Lovelace)",
-	"NV197": "NV190 family (Ada Lovelace)",
-}
-
 func printDate() string {
 	return time.Now().Format("Mon Jan 2 15:04:05 2006")
-}
-
-func getTemp() string {
-	// Look for the hwmon directory associated with the Nouveau driver
-	basePath := "/sys/class/hwmon"
-
-	// Iterate through all hwmon directories
-	hwmonDirs, err := filepath.Glob(basePath + "/hwmon*")
-	if err != nil {
-		fmt.Println("Error finding hwmon directories:", err)
-		return ""
-	}
-
-	var hwmonPath string
-	for _, dir := range hwmonDirs {
-		// Read the name file to determine the hwmon device
-		nameFile := filepath.Join(dir, "name")
-		nameData, err := ioutil.ReadFile(nameFile)
-		if err != nil {
-			continue // Skip directories we can't read
-		}
-
-		if strings.TrimSpace(string(nameData)) == "nouveau" {
-			hwmonPath = dir
-			break
-		}
-	}
-
-	if hwmonPath == "" {
-		fmt.Println("Could not find hwmon directory for Nouveau driver")
-		return ""
-	}
-
-	// Path to the temp1_input file
-	tempFilePath := filepath.Join(hwmonPath, "temp1_input")
-
-	// Read the temperature value
-	tempData, err := ioutil.ReadFile(tempFilePath)
-	if err != nil {
-		fmt.Println("Error reading temp1_input file:", err)
-		return ""
-	}
-
-	// Convert the temperature from millidegrees Celsius to degrees Celsius
-	tempMilli, err := strconv.Atoi(strings.TrimSpace(string(tempData)))
-	if err != nil {
-		fmt.Println("Error converting temperature value:", err)
-		return ""
-	}
-
-	// Return the temperature in degrees Celsius
-	return fmt.Sprintf("%.1f°C", float64(tempMilli)/1000.0)
 }
 
 func getCodename() string {
@@ -243,8 +87,11 @@ func getDram() string {
 
 	// Function to convert MB to MiB
 	convertToMiB := func(memory string) float64 {
-		var mb float64
-		fmt.Sscanf(memory, "%f MB", &mb)
+		mb, err := strconv.ParseFloat(strings.TrimSuffix(memory, " MB"), 64)
+		if err != nil {
+			fmt.Println("Error parsing memory:", err)
+			return 0
+		}
 		return mb * 0.953674
 	}
 
@@ -313,54 +160,95 @@ func getGpuName() string {
 	return gpuName
 }
 
-func getFamilyName(codename string) string {
-	familyName, found := nvidiaFamilies[codename]
-	if !found {
-		familyName = "Unknown Family"
-	}
-	return familyName
+func loadNvidiaFamilies(filename string) (map[string]string, error) {
+    file, err := os.Open(filename)
+    if err != nil {
+        return nil, err
+    }
+    defer file.Close()
+
+    // Read the JSON file
+    fileData, err := io.ReadAll(file)
+    if err != nil {
+        return nil, err
+    }
+
+    var nvidiaFamilies map[string]string
+    err = json.Unmarshal(fileData, &nvidiaFamilies)
+    if err != nil {
+        return nil, err
+    }
+
+    return nvidiaFamilies, nil
 }
 
-func getFanspeed() (string, string) {
-	// Look for the hwmon directory associated with the Nouveau driver
-	basePath := "/sys/class/hwmon"
+func getFamilyName(codename string, nvidiaFamilies map[string]string) string {
+    familyName, found := nvidiaFamilies[codename]
+    if !found {
+        familyName = "Unknown Family"
+    }
+    return familyName
+}
 
-	// Iterate through all hwmon directories
+func findHwmonPath(driverName string) (string, error) {
+	basePath := "/sys/class/hwmon"
 	hwmonDirs, err := filepath.Glob(basePath + "/hwmon*")
 	if err != nil {
-		log.Fatalf("Error finding hwmon directories: %v", err)
+		return "", fmt.Errorf("error finding hwmon directories: %v", err)
 	}
 
-	var hwmonPath string
 	for _, dir := range hwmonDirs {
-		// Read the name file to determine the hwmon device
 		nameFile := filepath.Join(dir, "name")
-		nameData, err := ioutil.ReadFile(nameFile)
+		nameData, err := os.ReadFile(nameFile)
 		if err != nil {
 			continue // Skip directories we can't read
 		}
 
-		if strings.TrimSpace(string(nameData)) == "nouveau" {
-			hwmonPath = dir
-			break
+		if strings.TrimSpace(string(nameData)) == driverName {
+			return dir, nil
 		}
 	}
 
-	if hwmonPath == "" {
-		log.Fatalf("Could not find hwmon directory for Nouveau driver")
+	return "", fmt.Errorf("could not find hwmon directory for %s driver", driverName)
+}
+
+func getTemp() string {
+	hwmonPath, err := findHwmonPath("nouveau")
+	if err != nil {
+		fmt.Println(err)
+		return ""
 	}
 
-	// Paths to pwm1_enable and pwm1 files
+	tempFilePath := filepath.Join(hwmonPath, "temp1_input")
+	tempData, err := os.ReadFile(tempFilePath)
+	if err != nil {
+		fmt.Println("Error reading temp1_input file:", err)
+		return ""
+	}
+
+	tempMilli, err := strconv.Atoi(strings.TrimSpace(string(tempData)))
+	if err != nil {
+		fmt.Println("Error converting temperature value:", err)
+		return ""
+	}
+
+	return fmt.Sprintf("%.1f°C", float64(tempMilli)/1000.0)
+}
+
+func getFanspeed() (string, string) {
+	hwmonPath, err := findHwmonPath("nouveau")
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+
 	pwm1EnablePath := filepath.Join(hwmonPath, "pwm1_enable")
 	pwm1Path := filepath.Join(hwmonPath, "pwm1")
 
-	// Read pwm1_enable
-	pwm1EnableData, err := ioutil.ReadFile(pwm1EnablePath)
+	pwm1EnableData, err := os.ReadFile(pwm1EnablePath)
 	if err != nil {
 		log.Fatalf("Error reading pwm1_enable file: %v", err)
 	}
 
-	// Determine fan control mode
 	status := strings.TrimSpace(string(pwm1EnableData))
 	var fanMode string
 	switch status {
@@ -374,8 +262,7 @@ func getFanspeed() (string, string) {
 		fanMode = "UNKNOWN"
 	}
 
-	// Read pwm1
-	pwm1Data, err := ioutil.ReadFile(pwm1Path)
+	pwm1Data, err := os.ReadFile(pwm1Path)
 	if err != nil {
 		log.Fatalf("Error reading pwm1 file: %v", err)
 	}
@@ -384,10 +271,48 @@ func getFanspeed() (string, string) {
 	return fanMode, speed
 }
 
+func changeFanSpeed(speed int) {
+	hwmonPath, err := findHwmonPath("nouveau")
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+
+	pwm1EnablePath := filepath.Join(hwmonPath, "pwm1_enable")
+	pwm1Path := filepath.Join(hwmonPath, "pwm1")
+
+	enableCmd := exec.Command("sudo", "sh", "-c", fmt.Sprintf("echo 1 > %s", pwm1EnablePath))
+	err = enableCmd.Run()
+	if err != nil {
+		log.Fatalf("Error enabling manual fan control: %v", err)
+	}
+
+	speedStr := strconv.Itoa(speed)
+	err = os.WriteFile(pwm1Path, []byte(speedStr), 0644)
+	if err != nil {
+		log.Fatalf("Error setting fan speed: %v", err)
+	}
+	fmt.Printf("Fan speed set to %d%%\n", speed)
+}
+
+func setAutoMode() {
+	hwmonPath, err := findHwmonPath("nouveau")
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+
+	pwm1EnablePath := filepath.Join(hwmonPath, "pwm1_enable")
+
+	err = os.WriteFile(pwm1EnablePath, []byte("2"), 0644)
+	if err != nil {
+		log.Fatalf("Error setting fan control to AUTO: %v", err)
+	}
+	fmt.Println("Fan control set to AUTO")
+}
+
 func printTable(gpuTemp string, codename string, dram string, chipsetModel string, gpuName string, familyName string, fanMode string, speed string) {
 	// First table
 	table1 := tablewriter.NewWriter(os.Stdout)
-	table1.SetHeader([]string{"GPU NAME       ", "FAMILY CODE NAME", "CODE NAME", "GPU CHIPSET"})
+	table1.SetHeader([]string{"GPU NAME", "FAMILY CODE NAME", "CODE NAME", "GPU CHIPSET"})
 	table1.SetBorder(true)   // Add borders around the table
 	table1.SetColumnAlignment([]int{tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER})
 	table1.SetRowLine(true)
@@ -396,7 +321,7 @@ func printTable(gpuTemp string, codename string, dram string, chipsetModel strin
 
 	// Second table
 	table2 := tablewriter.NewWriter(os.Stdout)
-	table2.SetHeader([]string{"TEMPERATURE", "DRAM                ", "  FAN STATUS ", " FAN SPEED "})
+	table2.SetHeader([]string{"TEMPERATURE", "DRAM", "FAN STATUS", "FAN SPEED"})
 	table2.SetBorder(true) // Add borders around the table
 	table2.SetColumnAlignment([]int{tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER})
 	table2.SetRowLine(true)
@@ -408,41 +333,13 @@ func printTable(gpuTemp string, codename string, dram string, chipsetModel strin
 	table2.Render()
 }
 
-func changeFanSpeed(speed int) {
-	// First, enable manual control
-	enableCmd := exec.Command("sudo", "sh", "-c", "echo 1 > /sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/hwmon/hwmon1/pwm1_enable")
-	err := enableCmd.Run()
-	if err != nil {
-		log.Fatalf("Error enabling manual fan control: %v", err)
-	}
-	// Path to the pwm1 file for manual control
-	pwm1Path := "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/hwmon/hwmon1/pwm1"
-
-	// Convert the speed to a string
-	speedStr := strconv.Itoa(speed)
-
-	// Write the new fan speed to the pwm1 file
-	err = ioutil.WriteFile(pwm1Path, []byte(speedStr), 0644)
-	if err != nil {
-		log.Fatalf("Error setting fan speed: %v", err)
-	}
-	fmt.Printf("Fan speed set to %d%%\n", speed)
-}
-
-
-func setAutoMode() {
-	// Path to the pwm1_enable file to enable AUTO mode
-	pwm1EnablePath := "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/hwmon/hwmon1/pwm1_enable"
-
-	// Set the pwm1_enable value to AUTO (2)
-	err := ioutil.WriteFile(pwm1EnablePath, []byte("2"), 0644)
-	if err != nil {
-		log.Fatalf("Error setting fan control to AUTO, Retry as sudo again. %v", err, "")
-	}
-	fmt.Println("Fan control set to AUTO")
-}
-
 func main() {
+	// Load the nvidiaFamilies from the JSON file
+	nvidiaFamilies, err := loadNvidiaFamilies("nvidia_families.json")
+	if err != nil {
+		log.Fatalf("Error loading NVIDIA families: %v", err)
+	}
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Options:\n")
@@ -479,7 +376,7 @@ func main() {
 	codename := getCodename()
 	gpuName := getGpuName()
 	chipsetModel := getChipset()
-	familyName := getFamilyName(codename)
+	familyName := getFamilyName(codename, nvidiaFamilies)
 	fanMode, speed := getFanspeed()
 	printTable(gpuTemp, codename, dram, chipsetModel, gpuName, familyName, fanMode, speed)
 }
