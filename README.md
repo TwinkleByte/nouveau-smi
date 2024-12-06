@@ -7,7 +7,6 @@
 - **Go**: Version 1.23.4 or later is required. Verify by running `go version`.
 - **Nouveau Driver**: The Nouveau driver for NVIDIA GPUs must be installed and active.
 - **Go Modules**:
-  - `tablewriter` v0.0.5 by olekukonko
   - `go-pretty` v6 by jedib0t
 - **mesa-utils**: Required for DRAM info (note: doesn't work in TTY unless you have a display running).
 
