@@ -13,7 +13,8 @@ import (
 	"strings"
 	"log"
 	"path/filepath"
-	"github.com/olekukonko/tablewriter"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 // Map of NVIDIA families with code names as keys and family names as values
@@ -396,25 +397,6 @@ func setAutoMode() {
 	fmt.Println("Fan control set to AUTO")
 }
 
-func renderTable(headers []string, rows [][]string) {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(headers)
-	table.SetBorder(true)
-	table.SetRowLine(true)
-
-	// Set column alignment to center for all columns
-	alignments := make([]int, len(headers))
-	for i := range headers {
-		alignments[i] = tablewriter.ALIGN_CENTER
-	}
-	table.SetColumnAlignment(alignments)
-
-	for _, row := range rows {
-		table.Append(row)
-	}
-	table.Render()
-}
-
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
@@ -457,20 +439,80 @@ func main() {
 
 	// Print out system information
 	fmt.Println(printDate())
-	gpuTemp := getTemp()
-	dram := getDram()
-	codename := getCodename()
-	gpuName := getGpuName()
-	chipsetModel := getChipset()
-	familyName := getFamilyName(codename)
-	fanMode, speed := getFanspeed()
 	
-	renderTable(
-		[]string{"GPU NAME", "FAMILY CODE NAME", "CODE NAME", "GPU CHIPSET"},
-		[][]string{{gpuName, familyName, codename, chipsetModel}},
-	)
-	renderTable(
-		[]string{"TEMPERATURE", "DRAM", "FAN STATUS", "FAN SPEED"},
-		[][]string{{gpuTemp, dram, fanMode, speed}},
-	)
+	// Create a new table writer
+	tCombined := table.NewWriter()
+	tCombined.SetOutputMirror(os.Stdout)
+	tCombined.SetStyle(table.StyleDefault)
+	tCombined.AppendHeader(table.Row{"GPU NAME", "FAMILY CODE NAME", "CODE NAME", "GPU CHIPSET"})
+	tCombined.AppendRow(table.Row{getGpuName(), getFamilyName(getCodename()), getCodename(), getChipset()})
+	tCombined.AppendSeparator()
+
+	// Calculate column widths dynamically
+	columnWidths := []int{
+		len("GPU NAME"),
+		len("FAMILY CODE NAME"),
+		len("CODE NAME"),
+		len("GPU CHIPSET"),
+	}
+
+	fanMode, speed := getFanspeed()
+
+	// Add the maximum widths from the data rows
+	dataRows := []table.Row{
+		{getGpuName(), getFamilyName(getCodename()), getCodename(), getChipset()},
+		{getTemp(), getDram(), fanMode, speed},
+	}
+
+	for _, row := range dataRows {
+		for i, col := range row {
+			// Convert col to string and then calculate length
+			colStr := fmt.Sprintf("%v", col)
+			if len(colStr) > columnWidths[i] {
+				columnWidths[i] = len(colStr)
+			}
+		}
+	}
+
+	// Create a separator row with `=` that matches the column widths
+	separator := []string{}
+	for _, width := range columnWidths {
+		separator = append(separator, strings.Repeat("·", width))
+	}
+
+	// Add the separator row
+	tCombined.AppendRow(table.Row{separator[0], separator[1], separator[2], separator[3]})
+	tCombined.AppendSeparator()
+
+	// Add second section
+	tCombined.AppendRow(table.Row{"TEMPERATURE", "DRAM", "FAN STATUS", "FAN SPEED"})
+	tCombined.AppendSeparator()
+	tCombined.AppendRow(table.Row{getTemp(), getDram(), fanMode, speed})
+
+	// Define column configurations to center the text in each column
+	tCombined.SetColumnConfigs([]table.ColumnConfig{
+		{
+			Name:  "GPU NAME",
+			Align: text.AlignCenter,
+			AlignHeader: text.AlignCenter,
+		},
+		{
+			Name:  "FAMILY CODE NAME",
+			Align: text.AlignCenter,
+			AlignHeader: text.AlignCenter,
+		},
+		{
+			Name:  "CODE NAME",
+			Align: text.AlignCenter,
+			AlignHeader: text.AlignCenter,
+		},
+		{
+			Name:  "GPU CHIPSET",
+			Align: text.AlignCenter,
+			AlignHeader: text.AlignCenter,
+		},
+	})
+
+	// Render combined table
+	tCombined.Render()
 }
