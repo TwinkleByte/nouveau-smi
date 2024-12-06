@@ -19,9 +19,13 @@ sudo install -m 755 nouveau-smi /usr/local/bin/
 nouveau-smi
 ```
 ### Uninstall
+```
 sudo rm /usr/local/bin/nouveau-smi
+```
 ### Monitor Nouveau GPU status every second
-`watch -n1 --no-title nouveau-smi`
+```
+watch -n1 --no-title nouveau-smi
+```
 ### Usage
 ```
 Usage of nouveau-smi:
