@@ -1,16 +1,30 @@
 # Nouveau-SMI
-`nouveau-smi` is a tool made by me for monitoring NVIDIA GPUs with the Nouveau driver. It provides essential GPU information, such as temperature, DRAM usage, fan status, and more.
 
-## Installation Guide
+`nouveau-smi` is a tool for monitoring NVIDIA GPUs using the Nouveau driver. It provides real-time information about the GPU’s status, such as temperature, DRAM usage, and fan settings.
 
 ### Prerequisites
-- Git: To clone the repo
-- Go: Version 1.23.4 or later.
-- **Nouveau Driver**: The tool requires the Nouveau driver for NVIDIA GPUs. Make sure it is installed and active on your system.
-- Go module named "tablewriter v0.0.5" by olekukonko and go-runewidth v0.0.9 by mattn
-- mesa-utils to get info about dram
+- **Git**: Required to clone the repository
+- **Go**: Version 1.23.4 or later is required. Verify by running `go version`.
+- **Nouveau Driver**: The Nouveau driver for NVIDIA GPUs must be installed and active.
+- **Go Modules**:
+  - `tablewriter` v0.0.5 by olekukonko
+- **mesa-utils**: Required for DRAM info (note: doesn't work in TTY).
 
-### Clone the Repository and Build the tool
+### Example output
+```
+Fri Dec 6 22:56:08 2024
++----------------+----------------------+-----------+-------------+
+|    GPU NAME    |   FAMILY CODE NAME   | CODE NAME | GPU CHIPSET |
++----------------+----------------------+-----------+-------------+
+| GeForce GT 710 | NVE0 family (Kepler) |   NV106   |   GK208B    |
++----------------+----------------------+-----------+-------------+
++-------------+------------------+------------+-----------+
+| TEMPERATURE |       DRAM       | FAN STATUS | FAN SPEED |
++-------------+------------------+------------+-----------+
+|   46.0°C    | 389MiB / 1945MiB |    AUTO    |    45     |
++-------------+------------------+------------+-----------+
+```
+### Clone the Repository and Build the Tool
 ```bash
 git clone https://github.com/TwinkleByte/nouveau-smi.git
 cd nouveau-smi
@@ -30,8 +44,6 @@ watch -n1 --no-title nouveau-smi
 ```
 Usage of nouveau-smi:
 Options:
-  -a         Set fan control to AUTO mode
-  --auto     Set fan control to AUTO mode
-  -f         Set the fan speed (40 to 80)
-  --fan      Set the fan speed (40 to 80)
+  -a, --auto   Set fan control to AUTO mode.
+  -f, --fan    Set the fan speed (range: 40 to 80).
 ```
