@@ -8,7 +8,6 @@
 - Go: Version 1.23.4 or later.
 - **Nouveau Driver**: The tool requires the Nouveau driver for NVIDIA GPUs. Make sure it is installed and active on your system.
 - Go module named "tablewriter v0.0.5" by olekukonko and go-runewidth v0.0.9 by mattn
-- lm_sensors 1:3.6.0
 - mesa-utils
 
 ### Clone the Repository and Build the tool
