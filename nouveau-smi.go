@@ -13,6 +13,7 @@ import (
 	"strings"
 	"io/ioutil"
 	"log"
+	"path/filepath"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -126,35 +127,55 @@ func printDate() string {
 }
 
 func getTemp() string {
-	// Run the sensors command and capture the output
-	cmd := exec.Command("sensors")
-	output, err := cmd.Output()
+	// Look for the hwmon directory associated with the Nouveau driver
+	basePath := "/sys/class/hwmon"
+
+	// Iterate through all hwmon directories
+	hwmonDirs, err := filepath.Glob(basePath + "/hwmon*")
 	if err != nil {
-		fmt.Println("Error running sensors:", err)
-		return ""
-	}	
-
-	// Convert the output to a string
-	sensorsOutput := string(output)
-
-	// Define the regex pattern for extracting GPU temperature
-	re := regexp.MustCompile(`nouveau-pci-[^\n]+.*temp1:\s*\+([0-9.]+)°C`)
-
-	// Find the first match in the output
-	match := re.FindStringSubmatch(sensorsOutput)
-	if len(match) < 2 {
-		// Adjust for possible line break after temp1: 
-		re = regexp.MustCompile(`nouveau-pci-[^\n]+[\s\S]*temp1:\s*\+([0-9.]+)°C`)
-		match = re.FindStringSubmatch(sensorsOutput)
-	}
-
-	if len(match) < 2 {
-		fmt.Println("GPU temperature not found")
+		fmt.Println("Error finding hwmon directories:", err)
 		return ""
 	}
 
-	// Assign value directly to gpuTemp
-	return match[1] + "°C"
+	var hwmonPath string
+	for _, dir := range hwmonDirs {
+		// Read the name file to determine the hwmon device
+		nameFile := filepath.Join(dir, "name")
+		nameData, err := ioutil.ReadFile(nameFile)
+		if err != nil {
+			continue // Skip directories we can't read
+		}
+
+		if strings.TrimSpace(string(nameData)) == "nouveau" {
+			hwmonPath = dir
+			break
+		}
+	}
+
+	if hwmonPath == "" {
+		fmt.Println("Could not find hwmon directory for Nouveau driver")
+		return ""
+	}
+
+	// Path to the temp1_input file
+	tempFilePath := filepath.Join(hwmonPath, "temp1_input")
+
+	// Read the temperature value
+	tempData, err := ioutil.ReadFile(tempFilePath)
+	if err != nil {
+		fmt.Println("Error reading temp1_input file:", err)
+		return ""
+	}
+
+	// Convert the temperature from millidegrees Celsius to degrees Celsius
+	tempMilli, err := strconv.Atoi(strings.TrimSpace(string(tempData)))
+	if err != nil {
+		fmt.Println("Error converting temperature value:", err)
+		return ""
+	}
+
+	// Return the temperature in degrees Celsius
+	return fmt.Sprintf("%.1f°C", float64(tempMilli)/1000.0)
 }
 
 func getCodename() string {
@@ -301,19 +322,46 @@ func getFamilyName(codename string) string {
 }
 
 func getFanspeed() (string, string) {
-	// Path to the pwm1_enable file
-	filePath := "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/hwmon/hwmon1/pwm1_enable"
+	// Look for the hwmon directory associated with the Nouveau driver
+	basePath := "/sys/class/hwmon"
 
-	// Read the pwm1_enable file
-	data, err := ioutil.ReadFile(filePath)
+	// Iterate through all hwmon directories
+	hwmonDirs, err := filepath.Glob(basePath + "/hwmon*")
+	if err != nil {
+		log.Fatalf("Error finding hwmon directories: %v", err)
+	}
+
+	var hwmonPath string
+	for _, dir := range hwmonDirs {
+		// Read the name file to determine the hwmon device
+		nameFile := filepath.Join(dir, "name")
+		nameData, err := ioutil.ReadFile(nameFile)
+		if err != nil {
+			continue // Skip directories we can't read
+		}
+
+		if strings.TrimSpace(string(nameData)) == "nouveau" {
+			hwmonPath = dir
+			break
+		}
+	}
+
+	if hwmonPath == "" {
+		log.Fatalf("Could not find hwmon directory for Nouveau driver")
+	}
+
+	// Paths to pwm1_enable and pwm1 files
+	pwm1EnablePath := filepath.Join(hwmonPath, "pwm1_enable")
+	pwm1Path := filepath.Join(hwmonPath, "pwm1")
+
+	// Read pwm1_enable
+	pwm1EnableData, err := ioutil.ReadFile(pwm1EnablePath)
 	if err != nil {
 		log.Fatalf("Error reading pwm1_enable file: %v", err)
 	}
 
-	// Trim whitespace from the result
-	status := strings.TrimSpace(string(data))
-
-	// Determine the fan control mode based on the value of pwm1_enable
+	// Determine fan control mode
+	status := strings.TrimSpace(string(pwm1EnableData))
 	var fanMode string
 	switch status {
 	case "0":
@@ -326,18 +374,13 @@ func getFanspeed() (string, string) {
 		fanMode = "UNKNOWN"
 	}
 
-	// Path to the pwm1 value (you might need to adjust this based on your system)
-	pwm1Path := "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/hwmon/hwmon1/pwm1"
-
-	// Read the file contents
-	data, err = ioutil.ReadFile(pwm1Path)
+	// Read pwm1
+	pwm1Data, err := ioutil.ReadFile(pwm1Path)
 	if err != nil {
 		log.Fatalf("Error reading pwm1 file: %v", err)
 	}
 
-	// Remove any extra spaces or newline characters
-	speed := strings.TrimSpace(string(data))
-
+	speed := strings.TrimSpace(string(pwm1Data))
 	return fanMode, speed
 }
 
