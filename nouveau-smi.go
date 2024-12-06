@@ -420,22 +420,30 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.VisitAll(func(f *flag.Flag) {
-			name := f.Name
-			if len(name) > 1 {
-				name = "--" + name // Make sure to print long flags with --
+			// Show the short and long flags together
+			var flagStr string
+			if len(f.Name) > 1 {
+				flagStr = fmt.Sprintf("--%s", f.Name) // Long flag
 			} else {
-				name = "-" + name // For short flags, leave them as-is
+				flagStr = fmt.Sprintf("-%s", f.Name) // Short flag
 			}
-			fmt.Fprintf(os.Stderr, "  %-10s %s\n", name, f.Usage)
+
+			// Add short flag to the usage message if present
+			if f.Name == "auto" {
+				fmt.Fprintf(os.Stderr, "  -a, %s   %s\n", flagStr, f.Usage)
+			} else if f.Name == "fan" {
+				fmt.Fprintf(os.Stderr, "  -f, %s   %s\n", flagStr, f.Usage)
+			}
 		})
-	}	
+	}
+
 	// Define the fan speed flag (long version)
-	speedFlag := flag.Int("fan", 0, "Set the fan speed (40 to 80)")
-	autoFlag := flag.Bool("auto", false, "Set fan control to AUTO mode")
+	speedFlag := flag.Int("fan", 0, "Set the fan speed (range: 40 to 80).")
+	autoFlag := flag.Bool("auto", false, "Set fan control to AUTO mode.")
 
 	// Manually add short flags
-	flag.IntVar(speedFlag, "f", *speedFlag, "Set the fan speed (40 to 80)")    // -f short version
-	flag.BoolVar(autoFlag, "a", *autoFlag, "Set fan control to AUTO mode")      // -a short version
+	flag.IntVar(speedFlag, "f", *speedFlag, "Set the fan speed (range: 40 to 80).")    // -f short version
+	flag.BoolVar(autoFlag, "a", *autoFlag, "Set fan control to AUTO mode.")           // -a short version
 
 	// Parse the flags
 	flag.Parse()
@@ -446,6 +454,8 @@ func main() {
 	} else if *speedFlag > 0 {
 		changeFanSpeed(*speedFlag)
 	}
+
+	// Print out system information
 	fmt.Println(printDate())
 	gpuTemp := getTemp()
 	dram := getDram()
@@ -454,6 +464,7 @@ func main() {
 	chipsetModel := getChipset()
 	familyName := getFamilyName(codename)
 	fanMode, speed := getFanspeed()
+	
 	renderTable(
 		[]string{"GPU NAME", "FAMILY CODE NAME", "CODE NAME", "GPU CHIPSET"},
 		[][]string{{gpuName, familyName, codename, chipsetModel}},
