@@ -278,6 +278,29 @@ func getFamilyName(codename string) string {
 	return familyName
 }
 
+// findDrmDevicePath searches for the DRM device directory related to the Nouveau driver.
+func findDrmDevicePath(driverName string) (string, error) {
+	basePath := "/sys/class/drm"
+	cardDirs, err := filepath.Glob(basePath + "/card*/device")
+	if err != nil {
+		return "", fmt.Errorf("error finding DRM card directories: %v", err)
+	}
+
+	for _, dir := range cardDirs {
+		driverPath := filepath.Join(dir, "driver")
+		driverLink, err := os.Readlink(driverPath)
+		if err != nil {
+			continue // Skip directories we can't read
+		}
+
+		if strings.Contains(driverLink, driverName) {
+			return dir, nil
+		}
+	}
+
+	return "", fmt.Errorf("could not find DRM device directory for %s driver", driverName)
+}
+
 func findHwmonPath(driverName string) (string, error) {
 	basePath := "/sys/class/hwmon"
 	hwmonDirs, err := filepath.Glob(basePath + "/hwmon*")
@@ -444,7 +467,6 @@ func main() {
 
 	// Create a new table writer
 	t := table.NewWriter()
-	t.SetTitle(fmt.Sprintf("NOUVEAU-SMI"))
 	t.SetOutputMirror(os.Stdout)
 	t.SetStyle(table.StyleDefault)
 	t.AppendHeader(table.Row{"GPU NAME", "FAMILY CODE NAME", "CODE NAME", "GPU CHIPSET"})
