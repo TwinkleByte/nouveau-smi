@@ -439,58 +439,26 @@ func main() {
 
 	// Print out system information
 	fmt.Println(printDate())
-	
-	// Create a new table writer
-	tCombined := table.NewWriter()
-	tCombined.SetOutputMirror(os.Stdout)
-	tCombined.SetStyle(table.StyleDefault)
-	tCombined.AppendHeader(table.Row{"GPU NAME", "FAMILY CODE NAME", "CODE NAME", "GPU CHIPSET"})
-	tCombined.AppendRow(table.Row{getGpuName(), getFamilyName(getCodename()), getCodename(), getChipset()})
-	tCombined.AppendSeparator()
-
-	// Calculate column widths dynamically
-	columnWidths := []int{
-		len("GPU NAME"),
-		len("FAMILY CODE NAME"),
-		len("CODE NAME"),
-		len("GPU CHIPSET"),
-	}
 
 	fanMode, speed := getFanspeed()
 
-	// Add the maximum widths from the data rows
-	dataRows := []table.Row{
-		{getGpuName(), getFamilyName(getCodename()), getCodename(), getChipset()},
-		{getTemp(), getDram(), fanMode, speed},
-	}
-
-	for _, row := range dataRows {
-		for i, col := range row {
-			// Convert col to string and then calculate length
-			colStr := fmt.Sprintf("%v", col)
-			if len(colStr) > columnWidths[i] {
-				columnWidths[i] = len(colStr)
-			}
-		}
-	}
-
-	// Create a separator row with `=` that matches the column widths
-	separator := []string{}
-	for _, width := range columnWidths {
-		separator = append(separator, strings.Repeat("·", width))
-	}
-
-	// Add the separator row
-	tCombined.AppendRow(table.Row{separator[0], separator[1], separator[2], separator[3]})
-	tCombined.AppendSeparator()
+	// Create a new table writer
+	t := table.NewWriter()
+	t.SetTitle(fmt.Sprintf("NOUVEAU-SMI"))
+	t.SetOutputMirror(os.Stdout)
+	t.SetStyle(table.StyleDefault)
+	t.AppendHeader(table.Row{"GPU NAME", "FAMILY CODE NAME", "CODE NAME", "GPU CHIPSET"})
+	t.AppendRow(table.Row{getGpuName(), getFamilyName(getCodename()), getCodename(), getChipset()})
+	t.AppendSeparator()
 
 	// Add second section
-	tCombined.AppendRow(table.Row{"TEMPERATURE", "DRAM", "FAN STATUS", "FAN SPEED"})
-	tCombined.AppendSeparator()
-	tCombined.AppendRow(table.Row{getTemp(), getDram(), fanMode, speed})
+	t.AppendRow(table.Row{"TEMPERATURE", "DRAM", "FAN STATUS", "FAN SPEED"})
+	t.AppendSeparator()
+	t.AppendRow(table.Row{getTemp(), getDram(), fanMode, speed})
+	t.AppendSeparator()
 
 	// Define column configurations to center the text in each column
-	tCombined.SetColumnConfigs([]table.ColumnConfig{
+	t.SetColumnConfigs([]table.ColumnConfig{
 		{
 			Name:  "GPU NAME",
 			Align: text.AlignCenter,
@@ -514,5 +482,5 @@ func main() {
 	})
 
 	// Render combined table
-	tCombined.Render()
+	t.Render()
 }
