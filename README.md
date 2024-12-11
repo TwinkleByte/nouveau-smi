@@ -26,11 +26,14 @@ Tue Dec 10 00:38:44 2024
 |     46.0°C     |   389MiB / 1945MiB   |    AUTO    |      44     |
 +----------------+----------------------+------------+-------------+
 ```
-### Clone the Repository and Build the Tool
+### Clone the Repository and Build the Tool:
 ```bash
 git clone https://github.com/TwinkleByte/nouveau-smi.git
 cd nouveau-smi
 go build -o nouveau-smi nouveau-smi.go
+```
+### Put the binary to $PATH:
+```bash
 sudo install -m 755 nouveau-smi /usr/local/bin/
 nouveau-smi
 ```
@@ -38,14 +41,13 @@ nouveau-smi
 ```
 sudo rm /usr/local/bin/nouveau-smi
 ```
-### Monitor Nouveau GPU status every second
+### Monitor Nouveau GPU status every second:
 ```
 watch -n1 --no-title nouveau-smi
 ```
-### Usage
+### Usage:
 ```
-nouveau-smi allows you to control the fan speed of your NVIDIA GPU
-and view system information such as temperature, fan status, etc.
+Simple Fast CLI Tool for Monitoring Nvidia GPU Using Nouveau Driver Written in Go
 
 Usage:
   nouveau-smi [flags]
