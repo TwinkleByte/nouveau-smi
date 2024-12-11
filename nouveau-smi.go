@@ -351,6 +351,62 @@ func getFanspeed() (string, string) {
 	return fanMode, speed
 }
 
+func setMaxFanSpeed(speed int) {
+	if speed < 10 || speed > 100 {
+		log.Fatalf("Error: Invalid max fan speed. It must be between 10 and 100.\n")
+	}
+
+	hwmonPath, err := findHwmonPath("nouveau")
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+
+	pwm1MaxPath := filepath.Join(hwmonPath, "pwm1_max")
+
+	speedStr := strconv.Itoa(speed)
+	err = os.WriteFile(pwm1MaxPath, []byte(speedStr), 0644)
+	if err != nil {
+		log.Fatalf("Error setting max fan speed: %v", err)
+	}
+	fmt.Printf("Max fan speed set to %d%%\n", speed)
+}
+
+func setMinFanSpeed(speed int) {
+	if speed < 10 || speed > 100 {
+		log.Fatalf("Error: Invalid min fan speed. It must be between 10 and 100.\n")
+	}
+
+	hwmonPath, err := findHwmonPath("nouveau")
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+
+	pwm1MinPath := filepath.Join(hwmonPath, "pwm1_min")
+
+	// Check if min speed is greater than max speed
+	maxSpeedPath := filepath.Join(hwmonPath, "pwm1_max")
+	maxSpeedData, err := os.ReadFile(maxSpeedPath)
+	if err != nil {
+		log.Fatalf("Error reading max fan speed: %v", err)
+	}
+
+	maxSpeed, err := strconv.Atoi(strings.TrimSpace(string(maxSpeedData)))
+	if err != nil {
+		log.Fatalf("Error parsing max fan speed: %v", err)
+	}
+
+	if speed > maxSpeed {
+		log.Fatalf("Error: Min fan speed cannot be greater than max fan speed. Either lower your value or change max fan speed.\n")
+	}
+
+	speedStr := strconv.Itoa(speed)
+	err = os.WriteFile(pwm1MinPath, []byte(speedStr), 0644)
+	if err != nil {
+		log.Fatalf("Error setting min fan speed: %v", err)
+	}
+	fmt.Printf("Min fan speed set to %d%%\n", speed)
+}
+
 func changeFanSpeed(speed int) {
 	hwmonPath, err := findHwmonPath("nouveau")
 	if err != nil {
@@ -390,6 +446,8 @@ func setAutoMode() {
 }
 
 var (
+	maxSpeedFlag int
+	minSpeedFlag int
 	speedFlag int
 	autoFlag  bool
 )
@@ -404,10 +462,17 @@ func init() {
 			// If the user provided the --auto flag, set to AUTO mode
 			if autoFlag {
 				setAutoMode()
-			} else if speedFlag > 0 {
-				// If the user provided a fan speed, change it
-				changeFanSpeed(speedFlag)
-			}
+			} else {
+				if speedFlag > 0 {
+					changeFanSpeed(speedFlag)
+				}
+				if maxSpeedFlag > 0 {
+					setMaxFanSpeed(maxSpeedFlag)
+				}
+				if minSpeedFlag > 0 {
+					setMinFanSpeed(minSpeedFlag)
+				}
+			}			
 
 			// Print out system information
 			fmt.Println(printDate())
@@ -419,7 +484,9 @@ func init() {
 	}
 
 	// Define flags and their shorthand
-	rootCmd.Flags().IntVarP(&speedFlag, "fan", "f", 0, "Set the fan speed (range: 40 to 80).")
+	rootCmd.Flags().IntVarP(&maxSpeedFlag, "max-fan-speed", "m", 0, "Set the max fan speed. Default value 80")
+	rootCmd.Flags().IntVarP(&minSpeedFlag, "min-fan-speed", "n", 0, "Set the min fan speed. Default value 40")
+	rootCmd.Flags().IntVarP(&speedFlag, "fan", "f", 0, "Set the fan speed.")
 	rootCmd.Flags().BoolVarP(&autoFlag, "auto", "a", false, "Set fan control to AUTO mode.")
 
 	// Execute the root command
