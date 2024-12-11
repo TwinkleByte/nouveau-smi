@@ -46,13 +46,15 @@ watch -n1 --no-title nouveau-smi
 ```
 ### Usage:
 ```
-Simple Fast CLI Tool for Monitoring Nvidia GPU Using Nouveau Driver Written in Go
+ Simple Fast CLI Tool for Monitoring Nvidia GPU Using Nouveau Driver Written in Go
 
 Usage:
   nouveau-smi [flags]
 
 Flags:
-  -a, --auto      Set fan control to AUTO mode.
-  -f, --fan int   Set the fan speed (range: 40 to 80).
-  -h, --help      help for nouveau-smi
+  -a, --auto                Set fan control to AUTO mode.
+  -f, --fan int             Set the fan speed.
+  -h, --help                help for nouveau-smi
+  -m, --max-fan-speed int   Set the max fan speed. Default value 80
+  -n, --min-fan-speed int   Set the min fan speed. Default value 40
 ```
