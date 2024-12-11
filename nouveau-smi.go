@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"bufio"
 	"bytes"
 	"strconv"
@@ -15,6 +14,7 @@ import (
 	"path/filepath"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/spf13/cobra"
 )
 
 // Map of NVIDIA families with code names as keys and family names as values
@@ -420,50 +420,48 @@ func setAutoMode() {
 	fmt.Println("Fan control set to AUTO")
 }
 
-func main() {
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "Options:\n")
-		flag.VisitAll(func(f *flag.Flag) {
-			// Show the short and long flags together
-			var flagStr string
-			if len(f.Name) > 1 {
-				flagStr = fmt.Sprintf("--%s", f.Name) // Long flag
-			} else {
-				flagStr = fmt.Sprintf("-%s", f.Name) // Short flag
+var (
+	speedFlag int
+	autoFlag  bool
+)
+
+func init() {
+	// Set up the root command
+	var rootCmd = &cobra.Command{
+		Use:   "nouveau-smi",
+		Short: "CLI Tool for Monitoring Nvidia GPU Using Nouveau Driver",
+		Long: ` Simple Fast CLI Tool for Monitoring Nvidia GPU Using Nouveau Driver Written in Go `,
+		Run: func(cmd *cobra.Command, args []string) {
+			// If the user provided the --auto flag, set to AUTO mode
+			if autoFlag {
+				setAutoMode()
+			} else if speedFlag > 0 {
+				// If the user provided a fan speed, change it
+				changeFanSpeed(speedFlag)
 			}
 
-			// Add short flag to the usage message if present
-			if f.Name == "auto" {
-				fmt.Fprintf(os.Stderr, "  -a, %s   %s\n", flagStr, f.Usage)
-			} else if f.Name == "fan" {
-				fmt.Fprintf(os.Stderr, "  -f, %s   %s\n", flagStr, f.Usage)
-			}
-		})
+			// Print out system information
+			fmt.Println(printDate())
+			fanMode, speed := getFanspeed()
+
+			// Create and display the table
+			printTable(fanMode, speed)
+		},
 	}
 
-	// Define the fan speed flag (long version)
-	speedFlag := flag.Int("fan", 0, "Set the fan speed (range: 40 to 80).")
-	autoFlag := flag.Bool("auto", false, "Set fan control to AUTO mode.")
+	// Define flags and their shorthand
+	rootCmd.Flags().IntVarP(&speedFlag, "fan", "f", 0, "Set the fan speed (range: 40 to 80).")
+	rootCmd.Flags().BoolVarP(&autoFlag, "auto", "a", false, "Set fan control to AUTO mode.")
 
-	// Manually add short flags
-	flag.IntVar(speedFlag, "f", *speedFlag, "Set the fan speed (range: 40 to 80).")    // -f short version
-	flag.BoolVar(autoFlag, "a", *autoFlag, "Set fan control to AUTO mode.")           // -a short version
-
-	// Parse the flags
-	flag.Parse()
-
-	// If the user provided a fan speed, change it
-	if *autoFlag {
-		setAutoMode()
-	} else if *speedFlag > 0 {
-		changeFanSpeed(*speedFlag)
+	// Execute the root command
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
+}
 
-	// Print out system information
-	fmt.Println(printDate())
-
-	fanMode, speed := getFanspeed()
+func printTable(fanMode, speed string) {
+	fanMode, speed = getFanspeed()
 
 	// Create a new table writer
 	t := table.NewWriter()
@@ -505,4 +503,7 @@ func main() {
 
 	// Render combined table
 	t.Render()
+}
+
+func main() {
 }
