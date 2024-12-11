@@ -167,64 +167,6 @@ func getCodename() string {
 	return codename
 }
 
-func getDram() string {
-	cmd := exec.Command("glxinfo")
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		fmt.Println("Error:", err)
-		return ""
-	}
-	if err := cmd.Start(); err != nil {
-		fmt.Println("Error starting the command:", err)
-		return ""
-	}
-	defer stdout.Close()
-
-	scanner := bufio.NewScanner(stdout)
-	var dedicatedMemory, availableMemory string
-
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		// Extract memory details if available
-		if strings.Contains(line, "Dedicated video memory:") {
-			dedicatedMemory = strings.TrimSpace(strings.Split(line, ":")[1])
-		} else if strings.Contains(line, "Currently available dedicated video memory:") {
-			availableMemory = strings.TrimSpace(strings.Split(line, ":")[1])
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		fmt.Println("Error reading output:", err)
-	}
-
-	// If either memory value is empty, print a warning
-	if dedicatedMemory == "" || availableMemory == "" {
-		fmt.Println("Warning: Missing memory information.")
-		return "Unknown memory"
-	}
-
-	// Function to convert MB to MiB
-	convertToMiB := func(memory string) float64 {
-		mb, err := strconv.ParseFloat(strings.TrimSuffix(memory, " MB"), 64)
-		if err != nil {
-			fmt.Println("Error parsing memory:", err)
-			return 0
-		}
-		return mb * 0.953674
-	}
-
-	// Convert dedicated and available memory to MiB
-	dedicatedMemoryMiB := convertToMiB(dedicatedMemory)
-	availableMemoryMiB := convertToMiB(availableMemory)
-	// Calculate used memory (dedicated - available)
-	usedMemoryMiB := dedicatedMemoryMiB - availableMemoryMiB
-
-	// Combine used and dedicated memory into a single string (dram)
-	dram := fmt.Sprintf("%.0fMiB / %.0fMiB", usedMemoryMiB, dedicatedMemoryMiB)
-	return dram
-}
-
 func parseLspciOutput() (string, string, error) {
 	cmd := exec.Command("lspci", "-k", "-d", "::03xx")
 	var out bytes.Buffer
@@ -299,6 +241,33 @@ func findDrmDevicePath(driverName string) (string, error) {
 	}
 
 	return "", fmt.Errorf("could not find DRM device directory for %s driver", driverName)
+}
+
+func getBusID() string {
+	// Find the DRM device path for the nouveau driver
+	drmDevicePath, err := findDrmDevicePath("nouveau")
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+
+	// Read the uevent file to get the PCI_SLOT_NAME
+	ueventFilePath := filepath.Join(drmDevicePath, "uevent")
+	ueventData, err := os.ReadFile(ueventFilePath)
+	if err != nil {
+		fmt.Println("Error reading uevent file:", err)
+		return ""
+	}
+
+	// Find the PCI_SLOT_NAME in the uevent data
+	lines := strings.Split(string(ueventData), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "PCI_SLOT_NAME=") {
+			return strings.TrimPrefix(line, "PCI_SLOT_NAME=")
+		}
+	}
+
+	return "PCI_SLOT_NAME not found"
 }
 
 func findHwmonPath(driverName string) (string, error) {
@@ -472,9 +441,9 @@ func printTable(fanMode, speed string) {
 	t.AppendSeparator()
 
 	// Add second section
-	t.AppendRow(table.Row{"TEMPERATURE", "DRAM", "FAN STATUS", "FAN SPEED"})
+	t.AppendRow(table.Row{"TEMPERATURE", "BUS ID", "FAN STATUS", "FAN SPEED"})
 	t.AppendSeparator()
-	t.AppendRow(table.Row{getTemp(), getDram(), fanMode, speed})
+	t.AppendRow(table.Row{getTemp(), getBusID(), fanMode, speed})
 	t.AppendSeparator()
 
 	// Define column configurations to center the text in each column
