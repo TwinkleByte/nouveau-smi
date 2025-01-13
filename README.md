@@ -26,7 +26,7 @@ Wed Dec 11 16:30:33 2024
 ```bash
 git clone https://github.com/TwinkleByte/nouveau-smi.git
 cd nouveau-smi
-go build -o nouveau-smi nouveau-smi.go
+go build -o nouveau-smi main.go
 ```
 ### Put the binary to $PATH:
 ```bash
