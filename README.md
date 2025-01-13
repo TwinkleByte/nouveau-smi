@@ -1,7 +1,4 @@
 # Nouveau-SMI
-
-Note: This project is still under active development, and significant changes are expected. The current version does not follow any formal versioning, and changes may be pushed frequently.
-
 `nouveau-smi` is a tool for monitoring NVIDIA GPUs using the Nouveau driver. It provides real-time information about the GPU’s status, such as temperature, and fan settings.
 
 ### Prerequisites
