@@ -17,7 +17,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Map of NVIDIA families with code names as keys and family names as values
 var nvidiaFamilies = map[string]string{
 	"NV04": "NV04 family (Fahrenheit)",
 	"NV05": "NV04 family (Fahrenheit)",
@@ -143,12 +142,8 @@ func getCodename() string {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-
-		// Search for the "Chipset" line and extract the chipset model
 		if strings.Contains(line, "Chipset:") {
-			// Extract the part after "Chipset: "
 			chipset := strings.TrimSpace(strings.Split(line, "Chipset:")[1])
-			// Remove "NVIDIA " if it exists and also remove surrounding quotes
 			codename = strings.Replace(chipset, "NVIDIA ", "", 1)
 			codename = strings.Replace(codename, "\"", "", -1)
 			break
@@ -176,10 +171,8 @@ func parseLspciOutput() (string, string, error) {
 		return "", "", fmt.Errorf("Error executing lspci: %v", err)
 	}
 
-	// Convert output to string
 	outputStr := out.String()
 
-	// Define regex pattern to extract NVIDIA chipset model and GPU name
 	re2 := regexp.MustCompile(`(?m)NVIDIA\s+Corporation\s+([A-Za-z0-9]+)\s+\[(.*?)\]`)
 	matches := re2.FindAllStringSubmatch(outputStr, -1)
 
@@ -187,9 +180,8 @@ func parseLspciOutput() (string, string, error) {
 		return "", "", fmt.Errorf("No NVIDIA GPU found")
 	}
 
-	// Extract chipsetModel and gpuName
-	chipsetModel := matches[0][1] // The first capture group contains the chipset model
-	gpuName := matches[0][2]     // The second capture group contains the GPU name
+	chipsetModel := matches[0][1]
+	gpuName := matches[0][2]
 
 	return chipsetModel, gpuName, nil
 }
@@ -220,7 +212,6 @@ func getFamilyName(codename string) string {
 	return familyName
 }
 
-// findDrmDevicePath searches for the DRM device directory related to the Nouveau driver.
 func findDrmDevicePath(driverName string) (string, error) {
 	basePath := "/sys/class/drm"
 	cardDirs, err := filepath.Glob(basePath + "/card*/device")
@@ -232,7 +223,7 @@ func findDrmDevicePath(driverName string) (string, error) {
 		driverPath := filepath.Join(dir, "driver")
 		driverLink, err := os.Readlink(driverPath)
 		if err != nil {
-			continue // Skip directories we can't read
+			continue
 		}
 
 		if strings.Contains(driverLink, driverName) {
@@ -244,14 +235,12 @@ func findDrmDevicePath(driverName string) (string, error) {
 }
 
 func getBusID() string {
-	// Find the DRM device path for the nouveau driver
 	drmDevicePath, err := findDrmDevicePath("nouveau")
 	if err != nil {
 		fmt.Println(err)
 		return ""
 	}
 
-	// Read the uevent file to get the PCI_SLOT_NAME
 	ueventFilePath := filepath.Join(drmDevicePath, "uevent")
 	ueventData, err := os.ReadFile(ueventFilePath)
 	if err != nil {
@@ -259,7 +248,6 @@ func getBusID() string {
 		return ""
 	}
 
-	// Find the PCI_SLOT_NAME in the uevent data
 	lines := strings.Split(string(ueventData), "\n")
 	for _, line := range lines {
 		if strings.HasPrefix(line, "PCI_SLOT_NAME=") {
@@ -281,7 +269,7 @@ func findHwmonPath(driverName string) (string, error) {
 		nameFile := filepath.Join(dir, "name")
 		nameData, err := os.ReadFile(nameFile)
 		if err != nil {
-			continue // Skip directories we can't read
+			continue
 		}
 
 		if strings.TrimSpace(string(nameData)) == driverName {
@@ -383,7 +371,6 @@ func setMinFanSpeed(speed int) {
 
 	pwm1MinPath := filepath.Join(hwmonPath, "pwm1_min")
 
-	// Check if min speed is greater than max speed
 	maxSpeedPath := filepath.Join(hwmonPath, "pwm1_max")
 	maxSpeedData, err := os.ReadFile(maxSpeedPath)
 	if err != nil {
@@ -453,13 +440,11 @@ var (
 )
 
 func init() {
-	// Set up the root command
 	var rootCmd = &cobra.Command{
 		Use:   "nouveau-smi",
 		Short: "CLI Tool for Monitoring Nvidia GPU Using Nouveau Driver",
 		Long: ` Simple Fast CLI Tool for Monitoring Nvidia GPU Using Nouveau Driver Written in Go `,
 		Run: func(cmd *cobra.Command, args []string) {
-			// If the user provided the --auto flag, set to AUTO mode
 			if autoFlag {
 				setAutoMode()
 			} else {
@@ -474,22 +459,18 @@ func init() {
 				}
 			}			
 
-			// Print out system information
 			fmt.Println(printDate())
 			fanMode, speed := getFanspeed()
 
-			// Create and display the table
 			printTable(fanMode, speed)
 		},
 	}
 
-	// Define flags and their shorthand
 	rootCmd.Flags().IntVarP(&maxSpeedFlag, "max-fan-speed", "m", 0, "Set the max fan speed. Default value 80")
 	rootCmd.Flags().IntVarP(&minSpeedFlag, "min-fan-speed", "n", 0, "Set the min fan speed. Default value 40")
 	rootCmd.Flags().IntVarP(&speedFlag, "fan", "f", 0, "Set the fan speed.")
 	rootCmd.Flags().BoolVarP(&autoFlag, "auto", "a", false, "Set fan control to AUTO mode.")
 
-	// Execute the root command
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -499,7 +480,6 @@ func init() {
 func printTable(fanMode, speed string) {
 	fanMode, speed = getFanspeed()
 
-	// Create a new table writer
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.SetStyle(table.StyleDefault)
@@ -507,13 +487,11 @@ func printTable(fanMode, speed string) {
 	t.AppendRow(table.Row{getGpuName(), getFamilyName(getCodename()), getCodename(), getChipset()})
 	t.AppendSeparator()
 
-	// Add second section
 	t.AppendRow(table.Row{"TEMPERATURE", "BUS ID", "FAN STATUS", "FAN SPEED"})
 	t.AppendSeparator()
 	t.AppendRow(table.Row{getTemp(), getBusID(), fanMode, speed})
 	t.AppendSeparator()
 
-	// Define column configurations to center the text in each column
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{
 			Name:  "GPU NAME",
@@ -537,7 +515,6 @@ func printTable(fanMode, speed string) {
 		},
 	})
 
-	// Render combined table
 	t.Render()
 }
 
