@@ -22,57 +22,22 @@ Wed Dec 11 16:30:33 2024
 |     45.0°C     |     0000:01:00.0     |    AUTO    |      44     |
 +----------------+----------------------+------------+-------------+
 ```
-### **Installation**
 
-#### 1. Install the CLI tool:
-```bash
-go install github.com/TwinkleByte/nouveau-smi/cmd/nouveau-smi@latest
+### Clone the Repository and Build the Tool:
 ```
-
-#### 2. Add the Go binary directory to your `PATH`:
-The binary is installed to `$GOPATH/bin` (default: `~/go/bin`) or `$GOBIN` if set. Add the appropriate directory to your shell’s `PATH`:
-
-**Bash**:
-```bash
-echo 'export PATH="$PATH:$(go env GOPATH)/bin"' >> ~/.bashrc
-source ~/.bashrc
+git clone https://github.com/TwinkleByte/nouveau-smi.git
+cd nouveau-smi
+go build -o nouveau-smi nouveau-smi.go
 ```
-
-**Zsh**:
-```bash
-echo 'export PATH="$PATH:$(go env GOPATH)/bin"' >> ~/.zshrc
-source ~/.zshrc
+### Put the binary to $PATH:
 ```
-
-**Fish** (preferred method):
-```fish
-fish_add_path (go env GOPATH)/bin
+sudo install -m 755 nouveau-smi /usr/local/bin/
+nouveau-smi
 ```
-*If you don’t have `fish_add_path` (older Fish versions):*
-```fish
-echo 'set -gx PATH $PATH (go env GOPATH)/bin' >> ~/.config/fish/config.fish
+### Uninstall
 ```
-
-#### 3. Verify Installation:
-```bash
-nouveau-smi --version
+sudo rm /usr/local/bin/nouveau-smi
 ```
-
----
-
-### **Troubleshooting**
-- **Command not found?**
-  - Ensure `$GOPATH/bin` or `$GOBIN` is in your `PATH`:
-    ```bash
-    echo $PATH | grep "$(go env GOPATH)/bin"
-    ```
-  - If you’ve set `$GOBIN`, use that path instead of `$GOPATH/bin`.
-  - Restart your shell or run `source ~/.bashrc`/`source ~/.zshrc`.
-
-- **Avoid duplicates in `PATH`:**
-  If you’ve already added the path, don’t run the command again. Check with:
-  ```bash
-  echo $PATH
 ### Monitor Nouveau GPU status every second:
 ```
 watch -n1 --no-title nouveau-smi
