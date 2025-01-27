@@ -1,4 +1,4 @@
-module nouveau-smi
+module github.com/TwinkleByte/nouveau-smi
 
 go 1.23.4
 
