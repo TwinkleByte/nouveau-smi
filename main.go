@@ -17,6 +17,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type NvidiaInfo struct {
+    chipset  string
+    family   string
+}
+
 var nvidiaFamilies = map[string]NvidiaInfo{
     "NV04": {"", "NV04 family (Fahrenheit)"},
     "NV05": {"", "NV04 family (Fahrenheit)"},
@@ -205,11 +210,11 @@ func getGpuName() string {
 }
 
 func getFamilyName(codename string) string {
-	familyName, found := nvidiaFamilies[codename]
+    info, found := nvidiaFamilies[codename]
 	if !found {
-		familyName = "Unknown Family"
+        return "Unknown Family"
 	}
-	return familyName
+    return info.family
 }
 
 func findDrmDevicePath(driverName string) (string, error) {
