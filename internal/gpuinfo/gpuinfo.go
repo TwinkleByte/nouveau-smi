@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"nouveau-smi/internal/hardware"
-	"nouveau-smi/pkg/nvidia"
+	"github.com/TwinkleByte/nouveau-smi/internal/hardware"
+	"github.com/TwinkleByte/nouveau-smi/pkg/nvidia"
 )
 
 func GetFamilyName(codename string) string {

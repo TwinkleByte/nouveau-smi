@@ -9,7 +9,7 @@ import (
     "path/filepath"
     "strconv"
     "strings"
-	"nouveau-smi/internal/hardware"
+	"github.com/TwinkleByte/nouveau-smi/internal/hardware"
 )
 
 
