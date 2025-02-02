@@ -10,11 +10,11 @@ import (
 	"strings"
 
 	"github.com/TwinkleByte/nouveau-smi/internal/hardware"
-	"github.com/TwinkleByte/nouveau-smi/pkg/nvidia"
+	"github.com/TwinkleByte/nouveaunvinfo"
 )
 
 func GetFamilyName(codename string) string {
-	info, found := nvidia.NvidiaFamilies[codename]
+	info, found := nouveaunvinfo.NvidiaFamilies[codename]
 	if !found {
 		return "Unknown Family"
 	}

@@ -1,3 +1,5 @@
+github.com/TwinkleByte/nouveaunvinfo v0.0.0-20250129091454-d59b35108760 h1:k3l9ZCGLWfIMLZ7hnP0iEPOS7hM/fk4Mo6jiBCzh3bU=
+github.com/TwinkleByte/nouveaunvinfo v0.0.0-20250129091454-d59b35108760/go.mod h1:RH3BM83UnraeFFTAHUKJuqm4i65v4OpSgEw3ACximvY=
 github.com/cpuguy83/go-md2man/v2 v2.0.4/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
