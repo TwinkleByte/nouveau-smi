@@ -27,7 +27,7 @@ Wed Dec 11 16:30:33 2024
 ```
 git clone https://github.com/TwinkleByte/nouveau-smi.git
 cd nouveau-smi
-go build -o nouveau-smi nouveau-smi.go
+go build -o nouveau-smi ./cmd/nouveau-smi/main.go
 ```
 ### Put the binary to $PATH:
 ```
@@ -55,4 +55,5 @@ Flags:
   -h, --help                help for nouveau-smi
   -m, --max-fan-speed int   Set the max fan speed. Default value 80
   -n, --min-fan-speed int   Set the min fan speed. Default value 40
+  -v, --version             Print version information
 ```
