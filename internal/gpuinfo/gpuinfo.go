@@ -64,7 +64,9 @@ func GetGpuName() string {
 }
 
 func GetCodename() string {
+    // On multi-GPU laptops the default GL context is the integrated GPU (no NV codename); query the NVIDIA card directly.
     cmd := exec.Command("glxinfo")
+    cmd.Env = append(os.Environ(), "DRI_PRIME=1")
     stdout, err := cmd.StdoutPipe()
     if err != nil {
         fmt.Println("Error:", err)
@@ -102,7 +104,6 @@ func GetCodename() string {
     }
 
     if codename == "" {
-        fmt.Println("Error: Codename information not found.")
         return ""
     }
 
