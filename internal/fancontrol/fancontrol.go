@@ -22,9 +22,10 @@ func GetFanspeed() (string, string) {
 	pwm1EnablePath := filepath.Join(hwmonPath, "pwm1_enable")
 	pwm1Path := filepath.Join(hwmonPath, "pwm1")
 
+	// Laptops may not expose fan-control sysfs nodes; report N/A instead of failing.
 	pwm1EnableData, err := os.ReadFile(pwm1EnablePath)
 	if err != nil {
-		log.Fatalf("Error reading pwm1_enable file: %v", err)
+		return "N/A", "N/A"
 	}
 
 	status := strings.TrimSpace(string(pwm1EnableData))
@@ -42,7 +43,7 @@ func GetFanspeed() (string, string) {
 
 	pwm1Data, err := os.ReadFile(pwm1Path)
 	if err != nil {
-		log.Fatalf("Error reading pwm1 file: %v", err)
+		return fanMode, "N/A"
 	}
 
 	speed := strings.TrimSpace(string(pwm1Data))
